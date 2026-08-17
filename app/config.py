@@ -8,6 +8,9 @@ keep one in. Everything comes from environment variables set on the service.
                                 each time the instance restarts.
     SCREENSHARE_DISPLAY_KEY     the secret in the instructor's /display URL.
                                 Set it, or a restart invalidates the bookmark.
+    SCREENSHARE_PUBLIC_URL      the address to put on the projector. Only worth
+                                setting when the service answers on more than
+                                one name and you want the short one shown.
 
     SCREENSHARE_CF_TURN_KEY_ID  Cloudflare Realtime TURN key ID
     SCREENSHARE_CF_TURN_TOKEN   its API token

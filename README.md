@@ -61,6 +61,12 @@ Under Environment variables:
 | `SCREENSHARE_DISPLAY_KEY` | the secret in your `/display` URL. Set it to a long random string, as a **secret**. |
 | `SCREENSHARE_CF_TURN_KEY_ID` | Cloudflare TURN key ID (see below) |
 | `SCREENSHARE_CF_TURN_TOKEN` | its API token, as a **secret** |
+| `SCREENSHARE_PUBLIC_URL` | the address shown on the projector and encoded in the QR |
+
+`SCREENSHARE_PUBLIC_URL` exists because the service answers on two names: the
+custom domain and the Koyeb one it was born with. Without it the display page
+shows whichever address you happened to open it on, so the projector could end
+up telling a class to type the long one.
 
 Both of the first two matter more than they look. Without them, every restart —
 a redeploy included — invents a new code and a new display key, so your
