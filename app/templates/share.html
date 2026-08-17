@@ -1,0 +1,56 @@
+{% extends "base.html" %} {% block title %}Share your screen{% endblock %} {%
+block bodyclass %}student{% endblock %} {% block content %}
+<main class="card">
+  <h1 id="heading">Share your screen</h1>
+
+  <p id="test-lead" class="lead" hidden>
+    This sends your camera rather than your screen, so it works from a phone.
+    Put this device on the network your students will use, and see whether the
+    video reaches the classroom.
+  </p>
+
+  <form id="join-form" class="stack">
+    <label>
+      Your name
+      <input id="name" name="name" autocomplete="name" required maxlength="60" />
+    </label>
+    <label>
+      Room code
+      <input
+        id="code"
+        name="code"
+        inputmode="numeric"
+        autocomplete="off"
+        required
+        maxlength="12"
+        placeholder="shown on the classroom screen"
+      />
+    </label>
+    <button type="submit" class="primary">Join</button>
+  </form>
+
+  <div id="stage" class="stack" hidden>
+    <p class="who">Joined as <strong id="who-name"></strong></p>
+    <button id="share" type="button" class="primary big">Share my screen</button>
+    <label class="check">
+      <input type="checkbox" id="audio" />
+      Include audio from the shared tab or screen
+    </label>
+    <button id="stop" type="button" class="ghost" hidden>Stop sharing</button>
+  </div>
+
+  <p id="status" class="status" role="status"></p>
+
+  <details class="help">
+    <summary>Trouble sharing?</summary>
+    <ul>
+      <li>Use Chrome or Edge. Safari on a Mac works too; iPhones and iPads cannot share a screen at all.</li>
+      <li>On a Mac, the first attempt may need Screen Recording permission for your browser in System Settings → Privacy &amp; Security.</li>
+      <li>You choose what to send in your browser's picker — a whole screen, one window, or a single tab. Nothing is shared until you pick.</li>
+      <li>Your screen goes up only when the instructor puts it up.</li>
+    </ul>
+  </details>
+</main>
+{% endblock %} {% block scripts %}
+<script src="/static/share.js"></script>
+{% endblock %}

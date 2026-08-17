@@ -1,0 +1,61 @@
+{% extends "base.html" %} {% block title %}Classroom screen share{% endblock %}
+{% block bodyclass %}display{% endblock %} {% block content %}
+<div class="layout">
+  <section class="stage" id="stage">
+    <video id="video" autoplay playsinline muted></video>
+
+    <div class="join" id="join">
+      <p class="join-lead">To share your screen, go to</p>
+      <p class="join-url" id="join-url">{{ join_url|replace("https://", "") }}</p>
+      <p class="join-lead">and enter the code</p>
+      <p class="join-code">{{ code }}</p>
+      <img class="join-qr" id="join-qr" alt="" hidden />
+    </div>
+
+    <div class="overlay" id="overlay" hidden>
+      <span class="live-name" id="live-name"></span>
+      <span class="path" id="path"></span>
+      <button type="button" id="unmute" class="ghost small">Unmute</button>
+      <button type="button" id="fullscreen" class="ghost small">Full screen</button>
+      <button type="button" id="clear" class="ghost small">Take down</button>
+    </div>
+  </section>
+
+  <aside class="side">
+    <header>
+      <h1>Screen share</h1>
+      <p class="code-line">
+        Code <strong>{{ code }}</strong>
+      </p>
+    </header>
+
+    <label class="check">
+      <input type="checkbox" id="auto" />
+      Show the first student automatically
+    </label>
+
+    <h2>In the room</h2>
+    <ul class="peers" id="peers">
+      <li class="empty">Nobody has joined yet.</li>
+    </ul>
+
+    <footer>
+      <p id="net" class="net"></p>
+      {% if turn_error %}
+      <p class="warn">TURN is configured but not working: {{ turn_error }}.
+        Video will still connect where the network allows a direct path.</p>
+      {% elif policy == "relay" %}
+      <p class="warn">Forcing the TURN relay — test mode.</p>
+      {% elif not has_turn %}
+      <p class="hint">No TURN server configured. If a student's video never
+        arrives, the campus network is likely blocking the direct path.</p>
+      {% endif %}
+    </footer>
+  </aside>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  window.DISPLAY_KEY = "{{ key }}";
+</script>
+<script src="/static/display.js"></script>
+{% endblock %}
