@@ -14,33 +14,44 @@ This version is hosted, on Koyeb. There is nothing to install on the classroom
 computer and no tunnel to start: the app has a fixed https address that works
 the same every week.
 
-## Deploy it
+## How it is deployed
 
-### 1. Push this to GitHub
+It runs on Koyeb, built from this repository's Dockerfile, on a paid `micro`
+instance in Washington D.C. — 0.5 vCPU and 512 MB, which is far more than
+signalling needs and is chosen for headroom rather than throughput.
+
+The instance type is the one setting here that is not really about cost. A free
+instance sleeps after an hour idle and cannot be told not to; a paid one at
+min-scale 1 simply stays up, so the address is live when the first student
+opens it and there is no cold start in front of a class.
+
+Scaling is pinned at one instance, and has to be. The room lives in that
+instance's memory, so two of them would each hold half a class and neither
+would see the other.
 
 ```
-git remote add origin git@github.com:<you>/screenshare.git
-git push -u origin main
+koyeb service create screenshare \
+  --app screenshare \
+  --git github.com/kerryback/screenshare \
+  --git-branch main \
+  --git-builder docker \
+  --git-docker-dockerfile Dockerfile \
+  --instance-type micro \
+  --regions was \
+  --scale 1 \
+  --ports 8000:http \
+  --routes /:8000 \
+  --checks 8000:http:/healthz \
+  --checks-grace-period 8000=10 \
+  --env SCREENSHARE_CODE=<code> \
+  --env 'SCREENSHARE_DISPLAY_KEY={{secret.screenshare_display_key}}'
 ```
 
-### 2. Create the Koyeb service
+A push to `main` redeploys. That is safe to do mid-week and even mid-class: the
+room empties for a few seconds and everyone reconnects by themselves, keeping
+the screen they had already picked.
 
-Create Service → GitHub → this repository, then:
-
-| | |
-| --- | --- |
-| Builder | Dockerfile |
-| Instance | Free (or Eco) |
-| Scaling | min 1, max 1 |
-| Port | 8000, HTTP, path `/` |
-| Health check | HTTP, path `/healthz` |
-| Region | whichever is closest to campus |
-
-Scaling has to be pinned at one instance. The room lives in the instance's
-memory, so two of them would each hold half a class and neither would see the
-other.
-
-### 3. Set the variables
+### The variables
 
 Under Environment variables:
 
@@ -52,9 +63,9 @@ Under Environment variables:
 | `SCREENSHARE_CF_TURN_TOKEN` | its API token, as a **secret** |
 
 Both of the first two matter more than they look. Without them, every restart —
-including a redeploy and every wake from sleep — invents a new code and a new
-display key, so your bookmarked display URL stops working and the code on the
-projector no longer matches what you told the class.
+a redeploy included — invents a new code and a new display key, so your
+bookmarked display URL stops working and the code on the projector no longer
+matches what you told the class.
 
 Generate a display key with:
 
@@ -62,7 +73,16 @@ Generate a display key with:
 python3 -c "import secrets; print(secrets.token_urlsafe(24))"
 ```
 
-### 4. Bookmark the display page
+and keep it, and the TURN token, in Koyeb secrets rather than in plain
+variables:
+
+```
+koyeb secrets create screenshare_display_key --value-from-stdin
+koyeb service update screenshare/screenshare \
+  --env 'SCREENSHARE_DISPLAY_KEY={{secret.screenshare_display_key}}'
+```
+
+### Bookmark the display page
 
 ```
 https://<your-app>.koyeb.app/display?key=<SCREENSHARE_DISPLAY_KEY>
@@ -84,9 +104,21 @@ thing that works is a relay both ends can reach — TURN.
 Set one up before the first class, not during it.
 
 In the Cloudflare dashboard: Realtime → TURN Keys → create a key. It gives a
-key ID and an API token; put them in the two variables above. Cloudflare does
-not issue fixed passwords — it mints short-lived ones from that key, so the app
-fetches a set at startup and refreshes them in the background.
+key ID and an API token. Cloudflare does not issue fixed passwords — it mints
+short-lived ones from that key, so the app fetches a set at startup and
+refreshes them in the background.
+
+Adding them is a variable change, not a rebuild:
+
+```
+koyeb secrets create screenshare_cf_turn_token --value-from-stdin
+koyeb service update screenshare/screenshare \
+  --env SCREENSHARE_CF_TURN_KEY_ID=<key id> \
+  --env 'SCREENSHARE_CF_TURN_TOKEN={{secret.screenshare_cf_turn_token}}'
+```
+
+The instance restarts, and `/api/state` then says `"turn_source": "cloudflare"`.
+Anything else means the credentials were rejected — read `turn_error`.
 
 Cloudflare's reply includes `turns:` on 443/TCP, which is the variant that gets
 through networks blocking UDP. This is Cloudflare's TURN service, not
@@ -119,9 +151,8 @@ redeploy, and repeat. Direct paths are refused, so video arriving means it came
 through TURN. Take the variable off afterwards — relaying a class that doesn't
 need to costs bandwidth and adds latency.
 
-Also worth doing once: open the display page a few minutes before class starts.
-A free instance sleeps after an hour with no traffic and takes a second or two
-to wake, and it is nicer for that to happen to you than to the first student.
+On a paid instance at min-scale 1 there is no cold start to wait out — the
+service is up between classes, and the address answers immediately.
 
 ## In class
 
@@ -202,6 +233,21 @@ cd tests
 
 The browser tests use `?test=1` and Chromium's fake camera, so they need no
 screen and no display.
+
+There is a fourth that points at the deployment rather than a local server —
+worth running after a config change, and the quickest way to confirm TURN is
+actually live:
+
+```
+SCREENSHARE_URL=https://<your-app>.koyeb.app \
+SCREENSHARE_DISPLAY_KEY=<key> SCREENSHARE_CODE=<code> \
+  ../.venv/bin/python test_live.py
+```
+
+It checks that TURN appears in the ICE servers the live instance hands out. It
+cannot tell you whether the classroom will work: both browsers it drives sit on
+one network, so they find a direct path even where a campus would not allow
+one. Only the phone check answers that.
 
 ## Notes
 
