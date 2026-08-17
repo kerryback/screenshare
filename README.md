@@ -14,6 +14,11 @@ This version is hosted, on Koyeb. There is nothing to install on the classroom
 computer and no tunnel to start: the app has a fixed https address that works
 the same every week.
 
+```
+https://screenshare.kerryback.com            what students open
+https://screenshare.kerryback.com/display?key=…   the instructor's page
+```
+
 ## How it is deployed
 
 It runs on Koyeb, built from this repository's Dockerfile, on a paid `micro`
@@ -63,10 +68,18 @@ Under Environment variables:
 | `SCREENSHARE_CF_TURN_TOKEN` | its API token, as a **secret** |
 | `SCREENSHARE_PUBLIC_URL` | the address shown on the projector and encoded in the QR |
 
-`SCREENSHARE_PUBLIC_URL` exists because the service answers on two names: the
-custom domain and the Koyeb one it was born with. Without it the display page
-shows whichever address you happened to open it on, so the projector could end
-up telling a class to type the long one.
+`SCREENSHARE_PUBLIC_URL` exists because the service answers on two names:
+`screenshare.kerryback.com` and the org-suffixed `*.koyeb.app` one it was born
+with. Without it the display page shows whichever address you happened to open
+it on, so the projector could end up telling a class to type the long one.
+
+The custom domain is a CNAME in the kerryback.com zone at DNSimple pointing at
+the target Koyeb gives when you add the domain:
+
+```
+koyeb domains create screenshare.kerryback.com --attach-to screenshare
+# then CNAME screenshare -> <the intended_cname it reports>
+```
 
 Both of the first two matter more than they look. Without them, every restart —
 a redeploy included — invents a new code and a new display key, so your
