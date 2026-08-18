@@ -78,6 +78,8 @@ CLOUDFLARE_ENDPOINT = (
     "https://rtc.live.cloudflare.com/v1/turn/keys/{key_id}/credentials/generate-ice-servers"
 )
 
+USER_AGENT = "classroom-screenshare/1.0"
+
 # Cloudflare does not issue fixed passwords; it mints short-lived ones from a
 # long-lived key. So credentials are fetched in the background and cached.
 #
@@ -116,6 +118,10 @@ def _fetch_cloudflare(cloud: dict[str, Any]) -> list[dict[str, Any]] | None:
         headers={
             "Authorization": f"Bearer {cloud['token']}",
             "Content-Type": "application/json",
+            # Cloudflare's edge bans urllib's default User-Agent outright --
+            # error 1010, a browser-signature block, which arrives as a 403 and
+            # reads exactly like a rejected token. Anything else is accepted.
+            "User-Agent": USER_AGENT,
         },
         method="POST",
     )
@@ -164,10 +170,18 @@ def refresh_turn(force: bool = False) -> None:
 
 
 def refresh_interval() -> float:
-    """How often the background task should call `refresh_turn`."""
+    """How often the background task should call `refresh_turn`.
+
+    While there are no working credentials, try again in a minute rather than
+    on the leisurely healthy schedule. The failure that matters is the one at
+    startup: a service that boots during a blip would otherwise sit without a
+    relay for half an hour, which is most of a class.
+    """
     cloud = _cloudflare()
     if cloud is None:
         return 3600.0
+    if _live_cloudflare() is None:
+        return 60.0
     return max(300.0, min(1800.0, cloud["ttl"] * 0.25))
 
 
