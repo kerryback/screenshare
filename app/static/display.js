@@ -261,10 +261,4 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !document.fullscreenElement) send({ type: "stage", id: null });
 });
 
-// The join address is this page's own, so it is on screen before anything
-// connects. The QR is the same address, for anyone who would rather not type.
-const qr = $("#join-qr");
-qr.src = `/api/qr.svg?key=${window.DISPLAY_KEY}`;
-qr.hidden = false;
-
 connect();

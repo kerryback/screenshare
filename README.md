@@ -81,7 +81,7 @@ Under Environment variables:
 | `SCREENSHARE_DISPLAY_KEY` | the secret in your `/display` URL. Set it to a long random string, as a **secret**. |
 | `SCREENSHARE_CF_TURN_KEY_ID` | Cloudflare TURN key ID (see below) |
 | `SCREENSHARE_CF_TURN_TOKEN` | its API token, as a **secret** |
-| `SCREENSHARE_PUBLIC_URL` | the address shown on the projector and encoded in the QR |
+| `SCREENSHARE_PUBLIC_URL` | the address shown on the projector |
 
 `SCREENSHARE_PUBLIC_URL` exists because the service answers on two names:
 `screenshare.kerryback.com` and the org-suffixed `*.koyeb.app` one it was born

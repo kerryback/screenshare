@@ -25,7 +25,8 @@ try:
         display.goto(f"{BASE}/display?key={KEY}")
         display.wait_for_selector("#peers li.empty")
         r.check("display shows the code", CODE in display.inner_text(".join-code"))
-        r.check("display shows a QR", not display.is_hidden("#join-qr"))
+        r.check("display says laptops only",
+                "laptop" in display.inner_text(".join-note").lower())
 
         student = browser.new_context(permissions=["camera"]).new_page()
         errors: list[str] = []

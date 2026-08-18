@@ -13,15 +13,13 @@ a 0.1-vCPU instance is enough for a full class.
 from __future__ import annotations
 
 import asyncio
-import io
 import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import segno
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -80,6 +78,25 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
+@app.middleware("http")
+async def force_https(request: Request, call_next):
+    """Send http:// callers to https:// before they reach a page that needs it.
+
+    A student typing the bare hostname can land on http, and browsers hand out
+    no screen capture outside a secure context -- so the share button would
+    simply not work, on a page that otherwise looks fine. The edge does not
+    redirect for us, so this does.
+
+    Only requests that actually arrived over http at the edge are redirected.
+    Koyeb's health check reaches the container directly with no forwarded
+    scheme, and redirecting that would fail the check and take the service
+    down.
+    """
+    if request.headers.get("x-forwarded-proto", "") == "http":
+        return RedirectResponse(str(request.url.replace(scheme="https")), status_code=308)
+    return await call_next(request)
+
+
 def _require_key(key: str) -> None:
     """The display page and the admin endpoints sit behind an unguessable key.
 
@@ -96,11 +113,11 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost", "[::1]", "0.0.0.0")
 def _public_url(request: Request) -> str:
     """The address students should type, as they would have to type it.
 
-    This ends up on the projector and inside the QR code, so getting the scheme
-    wrong is not cosmetic: browsers refuse to capture a screen on a page that
-    isn't secure, and a student who follows an http:// link gets a dead button
-    and no explanation. Anything that isn't localhost is therefore https,
-    whatever the edge happened to forward.
+    This ends up on the projector, so getting the scheme wrong is not cosmetic:
+    browsers refuse to capture a screen on a page that isn't secure, and a
+    student who follows an http:// link gets a dead button and no explanation.
+    Anything that isn't localhost is therefore https, whatever the edge
+    happened to forward.
     """
     configured = (os.environ.get("SCREENSHARE_PUBLIC_URL") or "").strip()
     if configured:
@@ -168,16 +185,6 @@ def state(key: str = ""):
         }
     )
     return JSONResponse(snapshot)
-
-
-@app.get("/api/qr.svg")
-def qr(request: Request, key: str = ""):
-    _require_key(key)
-    buf = io.BytesIO()
-    segno.make(_public_url(request), error="m").save(
-        buf, kind="svg", scale=5, border=2, dark="#0f172a", light="#ffffff"
-    )
-    return Response(buf.getvalue(), media_type="image/svg+xml")
 
 
 # --- signalling ------------------------------------------------------------

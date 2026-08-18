@@ -226,12 +226,13 @@ body.display {
   line-height: 1;
 }
 
-.join-qr {
-  width: 9rem;
-  height: 9rem;
-  border-radius: 8px;
-  background: #fff;
-  padding: 0.35rem;
+/* There is deliberately no QR code here. Scanning one puts the join page on a
+   phone, and no mobile browser can capture a screen -- so it would send the
+   room to the one thing the app cannot do. */
+.join-note {
+  margin: 1.4rem 0 0;
+  color: #94a3b8;
+  font-size: clamp(0.9rem, 1.7vw, 1.35rem);
 }
 
 .overlay {
