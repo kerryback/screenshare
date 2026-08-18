@@ -41,6 +41,13 @@ with sync_playwright() as p:
     r.check("the join address is the deployed one",
             BASE.replace("https://", "") in display.inner_text("#join-url"))
 
+    # The page starts with a hardcoded STUN default and replaces it when the
+    # server's config message lands. Reading before that arrives reports the
+    # default and looks exactly like a server with no TURN -- which is how this
+    # check once failed on a deployment whose relay was demonstrably working.
+    DEFAULT = '[{"urls":["stun:stun.l.google.com:19302"]}]'
+    display.wait_for_function(
+        f"() => JSON.stringify(state.ice) !== '{DEFAULT}'", timeout=30000)
     ice = display.evaluate("() => JSON.stringify(state.ice)")
     r.check(f"live instance hands out ICE servers: {ice[:90]}", "stun:" in ice or "turn" in ice)
     r.check("TURN is configured", "turn:" in ice or "turns:" in ice)
