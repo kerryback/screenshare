@@ -52,9 +52,24 @@ koyeb service create screenshare \
   --env 'SCREENSHARE_DISPLAY_KEY={{secret.screenshare_display_key}}'
 ```
 
-A push to `main` redeploys. That is safe to do mid-week and even mid-class: the
-room empties for a few seconds and everyone reconnects by themselves, keeping
-the screen they had already picked.
+A push to `main` is *supposed* to redeploy, and at the time of writing it does
+not. The service has `no_deploy_on_push: false`, so Koyeb is willing; it simply
+never hears about the pushes. Koyeb can build the repo because it is public and
+cloning needs no credentials, but the webhook needs Koyeb's GitHub app to be
+installed on this particular repository. Grant it under GitHub → Settings →
+Applications → Koyeb → Configure, or deploy by hand:
+
+```
+koyeb service redeploy screenshare/screenshare
+```
+
+Until that is fixed, a push leaves production on the old code while the repo
+says otherwise — which is worse than an obvious failure, so check
+`koyeb deployments list --service screenshare` after anything that matters.
+
+Deploying is safe mid-week and even mid-class: the room empties for a few
+seconds and everyone reconnects by themselves, keeping the screen they had
+already picked.
 
 ### The variables
 
