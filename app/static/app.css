@@ -246,6 +246,14 @@ body.display {
   font-size: clamp(0.9rem, 1.7vw, 1.35rem);
 }
 
+/* A second note under the first, close enough to read as the same aside. */
+.join-note.tight {
+  margin-top: 0.5rem;
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .overlay {
   position: absolute;
   left: 0;
@@ -260,7 +268,15 @@ body.display {
   transition: opacity 0.2s;
 }
 
-.stage:hover .overlay {
+.stage:hover /* A second note under the first, close enough to read as the same aside. */
+.join-note.tight {
+  margin-top: 0.5rem;
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.overlay {
   opacity: 1;
 }
 
