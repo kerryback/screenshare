@@ -288,6 +288,7 @@ cd tests
 ../.venv/bin/python test_signalling.py   # joining, staging, the handshake
 ../.venv/bin/python test_session.py      # starting and ending a class
 ../.venv/bin/python test_browser.py      # real browsers, real video arriving
+../.venv/bin/python test_quit.py         # quit with a student live on the projector
 ../.venv/bin/python test_class.py        # two students, switching, a server restart
 ```
 
