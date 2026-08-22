@@ -6,10 +6,14 @@
 
     <div class="join" id="join">
       <div id="join-live" {% if not open %}hidden{% endif %}>
-        <p class="join-lead">To share your screen, go to</p>
+        <p class="join-lead">Go to</p>
         <p class="join-url" id="join-url">{{ join_url|replace("https://", "") }}</p>
         <p class="join-lead">and enter the code</p>
         <p class="join-code" id="join-code">{{ code }}</p>
+        <p class="join-how">
+          When you want to share, click “Share my screen”, choose what to
+          show, and allow it. It appears on the projector when I pick you.
+        </p>
         <p class="join-note">On a laptop — phones and tablets can't share a screen.</p>
       </div>
 

@@ -226,6 +226,17 @@ body.display {
   line-height: 1;
 }
 
+/* What to do once they are in the room. It sits between the code and the
+   laptops-only note, and is read from the back of a room -- so it is a step
+   wider than body text and no longer than four lines at that size. */
+.join-how {
+  margin: 0 auto;
+  max-width: 34ch;
+  color: #cbd5e1;
+  font-size: clamp(0.95rem, 1.8vw, 1.4rem);
+  line-height: 1.45;
+}
+
 /* There is deliberately no QR code here. Scanning one puts the join page on a
    phone, and no mobile browser can capture a screen -- so it would send the
    room to the one thing the app cannot do. */
