@@ -18,8 +18,13 @@ CODE = "4271"
 KEY = "test-display-key"
 
 
-def start(port: int) -> subprocess.Popen:
-    env = dict(os.environ, SCREENSHARE_CODE=CODE, SCREENSHARE_DISPLAY_KEY=KEY)
+def start(port: int, code: str | None = CODE) -> subprocess.Popen:
+    """`code=None` leaves SCREENSHARE_CODE unset, so sessions mint their own."""
+    env = dict(os.environ, SCREENSHARE_DISPLAY_KEY=KEY)
+    if code is None:
+        env.pop("SCREENSHARE_CODE", None)
+    else:
+        env["SCREENSHARE_CODE"] = code
     proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app",
          "--host", "127.0.0.1", "--port", str(port),

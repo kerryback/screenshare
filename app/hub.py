@@ -5,6 +5,12 @@ captured screen ready to show, and who is on the projector right now. It never
 touches the video itself -- that travels browser to browser. All that passes
 through here is the WebRTC handshake and a few words of state.
 
+The room runs in sessions. A session is one class: it has its own code, and
+ending it puts everybody out and kills that code, so a link and a number that
+worked this morning are worth nothing this afternoon. The hub itself outlives
+every session -- the displays stay attached across the gap, which is what lets
+the instructor start the next one from the page already in front of them.
+
 Because it lives in memory, the service has to run as a single instance. Two
 instances would each hold half a classroom and neither would see the other.
 """
@@ -39,6 +45,7 @@ class Peer:
 class Hub:
     def __init__(self, code: str) -> None:
         self.code = code
+        self.open = True
         self.auto = False
         self.stage: str | None = None
         self.peers: dict[str, Peer] = {}
@@ -52,6 +59,7 @@ class Hub:
         peers = sorted(self.peers.values(), key=lambda p: p.joined_at)
         return {
             "type": "state",
+            "open": self.open,
             "code": self.code,
             "auto": self.auto,
             "stage": self.stage,
@@ -72,6 +80,46 @@ class Hub:
             if bucket is not None:
                 bucket.discard(ws)
             return False
+
+    # --- sessions ---------------------------------------------------------
+
+    async def begin(self, code: str) -> str:
+        """Open a session on a fresh code."""
+        async with self._lock:
+            self.code = code
+            self.open = True
+            self.auto = False
+            self.stage = None
+            self.path = {}
+        await self.broadcast()
+        return code
+
+    async def end(self) -> None:
+        """End the session: everyone out, the projector blank, the code dead.
+
+        Students are told before their socket goes, so their page can say the
+        class is over rather than sitting in the reconnect loop it would use
+        for a dropped wifi. Displays are told too, but kept: the instructor is
+        still looking at the page, and the next session has to be one click
+        from it.
+        """
+        async with self._lock:
+            leaving = list(self.peers.values())
+            self.peers = {}
+            self.open = False
+            self.code = ""
+            self.stage = None
+            self.path = {}
+
+        for peer in leaving:
+            await self._send(peer.ws, {"type": "closed"})
+            try:
+                await peer.ws.close()
+            except Exception:
+                pass  # already gone; nothing to do about it
+
+        await self.to_display({"type": "closed"})
+        await self.broadcast()
 
     # --- displays ---------------------------------------------------------
 
@@ -97,7 +145,11 @@ class Hub:
 
     async def remove_peer(self, peer_id: str) -> None:
         async with self._lock:
-            self.peers.pop(peer_id, None)
+            # A peer already dropped -- by `end`, or by a socket that closed
+            # twice -- is not news. Broadcasting it anyway sends the displays a
+            # state identical to the one they hold.
+            if self.peers.pop(peer_id, None) is None:
+                return
             cleared = self.stage == peer_id
             if cleared:
                 self.stage = None

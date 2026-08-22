@@ -118,10 +118,32 @@ function handle(message) {
       }
       break;
 
+    case "closed":
+      sessionClosed();
+      break;
+
     case "signal":
       onSignal(message.data);
       break;
   }
+}
+
+// The instructor ended the class. Distinct from a dropped connection: there is
+// nothing to reconnect to, so let go of the capture and offer the form again
+// rather than retrying for a minute.
+function sessionClosed() {
+  state.leaving = true;
+  state.joined = false;
+  teardownPeer();
+  if (state.stream) {
+    state.stream.getTracks().forEach((track) => track.stop());
+    state.stream = null;
+  }
+  stage.hidden = true;
+  form.hidden = false;
+  shareBtn.hidden = false;
+  stopBtn.hidden = true;
+  status("The session has ended. Nothing is being shared.", "bad");
 }
 
 form.addEventListener("submit", (event) => {
@@ -129,6 +151,8 @@ form.addEventListener("submit", (event) => {
   state.name = $("#name").value.trim();
   state.code = $("#code").value.trim();
   if (!state.name || !state.code) return;
+  state.leaving = false;
+  state.retry = 0;
   status("Joining…");
   connect();
 });

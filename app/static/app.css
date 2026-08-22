@@ -385,3 +385,24 @@ button.small {
 .warn {
   color: #fbbf24;
 }
+
+/* --- sessions ------------------------------------------------------------ */
+
+.code-line.ended strong,
+.code-line.ended {
+  color: #9aa4b2;
+}
+
+#join-ended .join-lead {
+  margin-bottom: 1.2rem;
+}
+
+#join-ended .join-note {
+  margin-top: 1.2rem;
+}
+
+.session-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

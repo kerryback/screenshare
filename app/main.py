@@ -4,6 +4,11 @@ Students open the app's https address on their own laptops, pick a screen,
 window or browser tab, and wait. The instructor -- at the classroom computer,
 on the display page -- chooses whose screen goes up on the projector.
 
+The room runs in sessions, one per class. Opening the /start bookmark begins
+one on a fresh code; Quit on the display page ends it, putting everybody out
+and killing the code. Between sessions the service stays up -- so the next
+class starts instantly -- but there is nothing for a stale link to join.
+
 The server only carries the WebRTC handshake and a short list of who is in the
 room. The video never passes through it: it goes browser to browser, directly
 when the network permits and through a TURN relay when it does not. That is why
@@ -17,6 +22,7 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -141,6 +147,21 @@ def share_page(request: Request):
     return templates.TemplateResponse(request, "share.html", {})
 
 
+@app.get("/start")
+async def start_page(key: str = ""):
+    """The instructor's bookmark: a session and the panel, in one click.
+
+    It deliberately leaves a running session alone. A bookmark gets clicked
+    twice, and by someone who is already mid-class -- the second click has to
+    land them on the panel, not empty the room. Rolling the code on purpose is
+    Quit and then Start, which takes a confirmation.
+    """
+    _require_key(key)
+    if not hub.open:
+        await hub.begin(config.room_code())
+    return RedirectResponse(f"/display?key={quote(DISPLAY_KEY, safe='')}", status_code=303)
+
+
 @app.get("/display")
 def display_page(request: Request, key: str = ""):
     """The classroom computer's own page. Bookmark it; the key is in the URL."""
@@ -151,6 +172,7 @@ def display_page(request: Request, key: str = ""):
         "display.html",
         {
             "key": DISPLAY_KEY,
+            "open": hub.open,
             "code": hub.code,
             "join_url": _public_url(request),
             "has_turn": status["configured"],
@@ -197,6 +219,17 @@ async def ws_student(ws: WebSocket):
     try:
         first = await ws.receive_json()
         given = str(first.get("code") or "").strip()
+        if not hub.open:
+            # Distinguished from a wrong code on purpose: no amount of retyping
+            # fixes this one, and the student should go and ask.
+            await ws.send_json(
+                {
+                    "type": "error",
+                    "message": "There is no session running right now.",
+                }
+            )
+            await ws.close()
+            return
         if first.get("type") != "join" or not secrets.compare_digest(given, hub.code):
             await ws.send_json(
                 {
@@ -258,7 +291,12 @@ async def ws_display(ws: WebSocket, key: str = ""):
         while True:
             message = await ws.receive_json()
             kind = message.get("type")
-            if kind == "stage":
+            if kind == "quit":
+                await hub.end()
+            elif kind == "start":
+                if not hub.open:
+                    await hub.begin(config.room_code())
+            elif kind == "stage":
                 await hub.set_stage(message.get("id"))
             elif kind == "auto":
                 await hub.set_auto(bool(message.get("on")))

@@ -5,11 +5,19 @@
     <video id="video" autoplay playsinline muted></video>
 
     <div class="join" id="join">
-      <p class="join-lead">To share your screen, go to</p>
-      <p class="join-url" id="join-url">{{ join_url|replace("https://", "") }}</p>
-      <p class="join-lead">and enter the code</p>
-      <p class="join-code">{{ code }}</p>
-      <p class="join-note">On a laptop — phones and tablets can't share a screen.</p>
+      <div id="join-live" {% if not open %}hidden{% endif %}>
+        <p class="join-lead">To share your screen, go to</p>
+        <p class="join-url" id="join-url">{{ join_url|replace("https://", "") }}</p>
+        <p class="join-lead">and enter the code</p>
+        <p class="join-code" id="join-code">{{ code }}</p>
+        <p class="join-note">On a laptop — phones and tablets can't share a screen.</p>
+      </div>
+
+      <div id="join-ended" {% if open %}hidden{% endif %}>
+        <p class="join-lead">No session is running.</p>
+        <button type="button" id="start" class="primary big">Start a session</button>
+        <p class="join-note">A new session comes up on a new code.</p>
+      </div>
     </div>
 
     <div class="overlay" id="overlay" hidden>
@@ -24,8 +32,11 @@
   <aside class="side">
     <header>
       <h1>Screen share</h1>
-      <p class="code-line">
-        Code <strong>{{ code }}</strong>
+      <p class="code-line" id="code-line" {% if not open %}hidden{% endif %}>
+        Code <strong id="side-code">{{ code }}</strong>
+      </p>
+      <p class="code-line ended" id="ended-line" {% if open %}hidden{% endif %}>
+        Ended
       </p>
     </header>
 
@@ -50,6 +61,14 @@
       <p class="hint">No TURN server configured. If a student's video never
         arrives, the campus network is likely blocking the direct path.</p>
       {% endif %}
+      <div class="session-controls">
+        <button type="button" id="quit" class="ghost small" {% if not open %}hidden{% endif %}>
+          Quit
+        </button>
+        <button type="button" id="restart" class="ghost small" {% if open %}hidden{% endif %}>
+          Start a session
+        </button>
+      </div>
     </footer>
   </aside>
 </div>

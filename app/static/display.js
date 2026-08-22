@@ -1,5 +1,6 @@
 // The classroom computer. Shows the join details until somebody is up, then
-// the student's screen. The instructor decides who that is.
+// the student's screen. The instructor decides who that is, and decides when
+// the session is over -- Quit puts everybody out and kills the code.
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -24,6 +25,7 @@ const state = {
   keepalive: null,
   ice: [{ urls: ["stun:stun.l.google.com:19302"] }],
   policy: "all",
+  open: true,
 };
 
 function send(message) {
@@ -73,6 +75,11 @@ function handle(message) {
     case "gone":
       if (state.peer === message.peer) teardown();
       break;
+    case "closed":
+      // The session ended -- whoever was up is off, whatever the state
+      // snapshot chasing this message says.
+      teardown();
+      break;
   }
 }
 
@@ -83,13 +90,15 @@ const LABEL = { joined: "in the room", ready: "ready", live: "on screen" };
 function render(snapshot) {
   state.peers = snapshot.peers || [];
   state.stage = snapshot.stage;
+  state.open = snapshot.open !== false;
   $("#auto").checked = !!snapshot.auto;
+  renderSession(snapshot);
 
   peersEl.innerHTML = "";
   if (!state.peers.length) {
     const li = document.createElement("li");
     li.className = "empty";
-    li.textContent = "Nobody has joined yet.";
+    li.textContent = state.open ? "Nobody has joined yet." : "The session has ended.";
     peersEl.append(li);
     return;
   }
@@ -115,6 +124,22 @@ function render(snapshot) {
     }
     peersEl.append(li);
   }
+}
+
+// Open or ended, in both places the instructor looks: the projector panel the
+// room can see, and the sidebar only this machine can.
+function renderSession(snapshot) {
+  const open = state.open;
+  if (open && snapshot.code) {
+    $("#join-code").textContent = snapshot.code;
+    $("#side-code").textContent = snapshot.code;
+  }
+  $("#join-live").hidden = !open;
+  $("#join-ended").hidden = open;
+  $("#code-line").hidden = !open;
+  $("#ended-line").hidden = open;
+  $("#quit").hidden = !open;
+  $("#restart").hidden = open;
 }
 
 function button(label, onClick) {
@@ -245,6 +270,21 @@ $("#auto").addEventListener("change", (event) => {
 });
 
 $("#clear").addEventListener("click", () => send({ type: "stage", id: null }));
+
+// Quit is the one irreversible button on this page, and it is next to the
+// ordinary ones -- so it asks, and it says what it costs.
+function quit() {
+  const sharing = state.peers.length;
+  const warning = sharing
+    ? `End the session? ${sharing} ${sharing === 1 ? "person" : "people"} will be disconnected, ` +
+      "and the code will stop working."
+    : "End the session? The code will stop working.";
+  if (confirm(warning)) send({ type: "quit" });
+}
+
+$("#quit").addEventListener("click", quit);
+$("#start").addEventListener("click", () => send({ type: "start" }));
+$("#restart").addEventListener("click", () => send({ type: "start" }));
 
 $("#fullscreen").addEventListener("click", () => {
   if (document.fullscreenElement) document.exitFullscreen();

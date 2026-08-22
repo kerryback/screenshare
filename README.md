@@ -15,9 +15,31 @@ computer and no tunnel to start: the app has a fixed https address that works
 the same every week.
 
 ```
-https://screenshare.kerryback.com            what students open
-https://screenshare.kerryback.com/display?key=…   the instructor's page
+https://screenshare.kerryback.com                 what students open
+https://screenshare.kerryback.com/start?key=…     your bookmark: starts a class
+https://screenshare.kerryback.com/display?key=…   the same panel, without starting one
 ```
+
+## Sessions
+
+The room runs one class at a time. Opening the `/start` bookmark begins a
+session on a fresh four-digit code; Quit, at the bottom of the panel, ends
+it — everyone sharing is disconnected, the projector goes blank, and the code
+stops working. Between sessions the address still answers, but there is nothing
+to join: a student who kept last week's number gets *There is no session
+running right now*.
+
+That is the whole point of ending one. The code is the only thing standing
+between the room and anyone who was ever told the address, so a code that dies
+with the class is worth more than one that lives until the next redeploy.
+
+The bookmark is safe to click twice. If a session is already running it just
+takes you to the panel rather than emptying the room; rolling the code on
+purpose is Quit, which asks first and says how many people it will drop, and
+then Start.
+
+The service itself keeps running throughout — Quit ends the class, not the
+server, so the next session comes up instantly with no cold start.
 
 ## How it is deployed
 
@@ -48,7 +70,6 @@ koyeb service create screenshare \
   --routes /:8000 \
   --checks 8000:http:/healthz \
   --checks-grace-period 8000=10 \
-  --env SCREENSHARE_CODE=<code> \
   --env 'SCREENSHARE_DISPLAY_KEY={{secret.screenshare_display_key}}'
 ```
 
@@ -77,7 +98,7 @@ Under Environment variables:
 
 | variable | what it does |
 | --- | --- |
-| `SCREENSHARE_CODE` | the code students type, e.g. `4271`. Set it, or it changes every restart. |
+| `SCREENSHARE_CODE` | pins the code students type, e.g. `4271`. leave it unset — set, it hands every session the same number, which is what sessions exist to avoid. Useful only for tests. |
 | `SCREENSHARE_DISPLAY_KEY` | the secret in your `/display` URL. Set it to a long random string, as a **secret**. |
 | `SCREENSHARE_CF_TURN_KEY_ID` | Cloudflare TURN key ID (see below) |
 | `SCREENSHARE_CF_TURN_TOKEN` | its API token, as a **secret** |
@@ -96,10 +117,10 @@ koyeb domains create screenshare.kerryback.com --attach-to screenshare
 # then CNAME screenshare -> <the intended_cname it reports>
 ```
 
-Both of the first two matter more than they look. Without them, every restart —
-a redeploy included — invents a new code and a new display key, so your
-bookmarked display URL stops working and the code on the projector no longer
-matches what you told the class.
+`SCREENSHARE_DISPLAY_KEY` matters more than it looks. Without it, every restart
+— a redeploy included — invents a new key, and your bookmark stops working.
+`SCREENSHARE_CODE` is the opposite: setting it defeats the fresh code each
+session is supposed to get.
 
 Generate a display key with:
 
@@ -116,13 +137,17 @@ koyeb service update screenshare/screenshare \
   --env 'SCREENSHARE_DISPLAY_KEY={{secret.screenshare_display_key}}'
 ```
 
-### Bookmark the display page
+### Bookmark the start link
 
 ```
-https://<your-app>.koyeb.app/display?key=<SCREENSHARE_DISPLAY_KEY>
+https://<your-app>.koyeb.app/start?key=<SCREENSHARE_DISPLAY_KEY>
 ```
 
-That is the instructor's page, and the key is the only thing protecting it —
+One click before class: it opens a session on a new code and lands you on the
+panel. `/display?key=…` is the same page without starting anything, for looking
+in on a session that is already running.
+
+The key is the only thing protecting either —
 the app is on the public internet, so where a request comes from proves
 nothing. Students get the plain address, with no key and no path:
 `https://<your-app>.koyeb.app`.
@@ -252,8 +277,8 @@ SCREENSHARE_CODE=4271 SCREENSHARE_DISPLAY_KEY=dev \
   .venv/bin/uvicorn app.main:app --port 8030 --reload
 ```
 
-Then <http://127.0.0.1:8030> as a student and
-<http://127.0.0.1:8030/display?key=dev> as the instructor. `127.0.0.1` is a
+Then <http://127.0.0.1:8030/start?key=dev> as the instructor and
+<http://127.0.0.1:8030> as a student. `127.0.0.1` is a
 secure context, so screen capture works locally without https.
 
 Each test starts its own server:
@@ -261,6 +286,7 @@ Each test starts its own server:
 ```
 cd tests
 ../.venv/bin/python test_signalling.py   # joining, staging, the handshake
+../.venv/bin/python test_session.py      # starting and ending a class
 ../.venv/bin/python test_browser.py      # real browsers, real video arriving
 ../.venv/bin/python test_class.py        # two students, switching, a server restart
 ```
@@ -287,7 +313,7 @@ one. Only the phone check answers that.
 
 - The room code is what keeps a leaked link out. It is on the display page, not
   in the URL, so forwarding the address to someone outside the room gets them
-  nowhere.
+  nowhere — and Quit retires it at the end of the class.
 - Sharing is always explicit: the student picks what to send in their own
   browser's picker and can stop from the page or from the browser's own sharing
   indicator.
